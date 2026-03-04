@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ElectroTienda GT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700&family=Manrope:wght@600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="tag">Tecnologia en Guatemala</p>
+      <h1>ElectroTienda GT</h1>
+      <p class="lead">Catalogo moderno de articulos electronicos con precios en quetzales.</p>
+    </div>
+    <button id="themeToggle" class="theme-toggle" type="button">Modo oscuro</button>
+  </header>
+
+  <main class="layout">
+    <section>
+      <div class="section-head">
+        <h2>Productos destacados</h2>
+        <label class="search-wrap">
+          <span>Buscar</span>
+          <input id="searchInput" type="search" placeholder="Ej: laptop, audifonos, monitor" />
+        </label>
+      </div>
+      <div id="productGrid" class="product-grid"></div>
+      <p id="emptyProducts" class="empty" hidden>No se encontraron productos con ese criterio.</p>
+    </section>
+
+    <aside class="cart-panel">
+      <h2>Carrito</h2>
+      <p class="cart-count">Articulos: <strong id="cartCount">0</strong></p>
+      <ul id="cartList" class="cart-list"></ul>
+      <p id="emptyCart" class="empty">Tu carrito esta vacio.</p>
+      <div class="total-row">
+        <span>Total</span>
+        <strong id="cartTotal">Q 0.00</strong>
+      </div>
+      <button id="clearCart" class="clear-btn" type="button">Vaciar carrito</button>
+    </aside>
+  </main>
+
+  <template id="productCardTemplate">
+    <article class="product-card">
+      <img class="product-image" alt="" loading="lazy" />
+      <div class="product-info">
+        <p class="product-category"></p>
+        <h3 class="product-name"></h3>
+        <p class="product-desc"></p>
+        <div class="product-foot">
+          <strong class="product-price"></strong>
+          <button class="add-btn" type="button">Agregar</button>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
