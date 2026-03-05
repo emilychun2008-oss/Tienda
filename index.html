@@ -23,10 +23,26 @@
     <section>
       <div class="section-head">
         <h2>Productos destacados</h2>
-        <label class="search-wrap">
-          <span>Buscar</span>
-          <input id="searchInput" type="search" placeholder="Ej: laptop, audifonos, monitor" />
-        </label>
+        <div class="filters-row">
+          <label class="search-wrap">
+            <span>Buscar</span>
+            <input id="searchInput" type="search" placeholder="Ej: laptop, audifonos, monitor" />
+          </label>
+          <label class="filter-wrap">
+            <span>Categoria</span>
+            <select id="categorySelect">
+              <option value="all">Todas</option>
+            </select>
+          </label>
+          <label class="filter-wrap">
+            <span>Orden</span>
+            <select id="sortSelect">
+              <option value="default">Destacados</option>
+              <option value="price-asc">Precio: menor a mayor</option>
+              <option value="price-desc">Precio: mayor a menor</option>
+            </select>
+          </label>
+        </div>
       </div>
       <div id="productGrid" class="product-grid"></div>
       <p id="emptyProducts" class="empty" hidden>No se encontraron productos con ese criterio.</p>
