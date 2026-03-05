@@ -51,12 +51,15 @@
     <aside class="cart-panel">
       <h2>Carrito</h2>
       <p class="cart-count">Articulos: <strong id="cartCount">0</strong></p>
+      <p class="payment-note">Pago disponible: <strong>Tarjeta (online)</strong></p>
       <ul id="cartList" class="cart-list"></ul>
       <p id="emptyCart" class="empty">Tu carrito esta vacio.</p>
       <div class="total-row">
         <span>Total</span>
         <strong id="cartTotal">Q 0.00</strong>
       </div>
+      <button id="checkoutBtn" class="pay-btn" type="button">Pagar con tarjeta</button>
+      <button id="downloadInvoiceBtn" class="invoice-btn" type="button">Descargar ultima factura PDF</button>
       <button id="clearCart" class="clear-btn" type="button">Vaciar carrito</button>
     </aside>
   </main>
@@ -96,6 +99,49 @@
     </article>
   </div>
 
+  <div id="checkoutModal" class="modal" hidden>
+    <div class="modal-overlay" data-close-checkout="true"></div>
+    <article class="checkout-card" role="dialog" aria-modal="true" aria-labelledby="checkoutTitle">
+      <button id="closeCheckoutBtn" class="close-modal" type="button" aria-label="Cerrar">x</button>
+      <h3 id="checkoutTitle">Pago con tarjeta</h3>
+      <p class="checkout-subtitle">Completa tus datos para procesar el pago online y generar tu factura PDF.</p>
+
+      <div class="checkout-total">
+        <span>Total a pagar</span>
+        <strong id="checkoutTotal">Q 0.00</strong>
+      </div>
+
+      <form id="checkoutForm" class="checkout-form" novalidate>
+        <label>Nombre del titular
+          <input id="cardName" type="text" required maxlength="80" />
+        </label>
+        <label>Numero de tarjeta
+          <input id="cardNumber" type="text" required inputmode="numeric" maxlength="19" placeholder="1234 5678 9012 3456" />
+        </label>
+        <div class="checkout-grid">
+          <label>Vencimiento (MM/AA)
+            <input id="cardExpiry" type="text" required maxlength="5" placeholder="MM/AA" />
+          </label>
+          <label>CVV
+            <input id="cardCvv" type="password" required inputmode="numeric" maxlength="4" placeholder="123" />
+          </label>
+        </div>
+        <label>Correo para factura
+          <input id="customerEmail" type="email" required maxlength="120" />
+        </label>
+        <label>Direccion de entrega
+          <input id="customerAddress" type="text" required maxlength="140" />
+        </label>
+        <label>NIT o C/F
+          <input id="customerNit" type="text" required maxlength="20" placeholder="Ej: 1234567-8 o C/F" />
+        </label>
+        <p id="checkoutError" class="error-text"></p>
+        <button class="pay-btn" type="submit">Pagar y descargar factura PDF</button>
+      </form>
+    </article>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

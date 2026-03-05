@@ -310,9 +310,24 @@ const modalPrice = document.getElementById("modalPrice");
 const modalSpecs = document.getElementById("modalSpecs");
 const modalAddBtn = document.getElementById("modalAddBtn");
 const closeModalBtn = document.getElementById("closeModalBtn");
+const checkoutModal = document.getElementById("checkoutModal");
+const checkoutBtn = document.getElementById("checkoutBtn");
+const downloadInvoiceBtn = document.getElementById("downloadInvoiceBtn");
+const closeCheckoutBtn = document.getElementById("closeCheckoutBtn");
+const checkoutForm = document.getElementById("checkoutForm");
+const checkoutTotal = document.getElementById("checkoutTotal");
+const checkoutError = document.getElementById("checkoutError");
+const cardNameInput = document.getElementById("cardName");
+const cardNumberInput = document.getElementById("cardNumber");
+const cardExpiryInput = document.getElementById("cardExpiry");
+const cardCvvInput = document.getElementById("cardCvv");
+const customerEmailInput = document.getElementById("customerEmail");
+const customerAddressInput = document.getElementById("customerAddress");
+const customerNitInput = document.getElementById("customerNit");
 
 const THEME_STORAGE_KEY = "electro_tienda_theme";
 const CART_STORAGE_KEY = "electro_tienda_cart";
+const LAST_INVOICE_STORAGE_KEY = "electro_tienda_last_invoice";
 
 const getSavedCart = () => {
   try {
@@ -341,6 +356,17 @@ const getSavedCart = () => {
 };
 
 const cart = getSavedCart();
+const getSavedInvoice = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LAST_INVOICE_STORAGE_KEY) || "null");
+    if (!saved || !Array.isArray(saved.items) || !saved.customer || !saved.totals || !saved.number) return null;
+    return saved;
+  } catch (error) {
+    return null;
+  }
+};
+
+let lastInvoice = getSavedInvoice();
 const filters = {
   query: "",
   category: "all",
@@ -349,9 +375,19 @@ const filters = {
 let selectedProductId = null;
 
 const formatGTQ = (amount) => `Q ${amount.toFixed(2)}`;
+const nowDate = () => new Date();
+const pad2 = (num) => String(num).padStart(2, "0");
+const invoiceNumber = () => {
+  const d = nowDate();
+  return `ET-${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${d.getTime().toString().slice(-5)}`;
+};
 
 const saveTheme = (mode) => localStorage.setItem(THEME_STORAGE_KEY, mode);
 const saveCart = () => localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(Array.from(cart.values())));
+const saveLastInvoice = (invoice) => {
+  lastInvoice = invoice;
+  localStorage.setItem(LAST_INVOICE_STORAGE_KEY, JSON.stringify(invoice));
+};
 const getProductById = (productId) => products.find((p) => p.id === productId);
 
 const getProductSpecs = (product) => {
@@ -416,6 +452,168 @@ const getProductSpecs = (product) => {
 const closeProductModal = () => {
   productModal.hidden = true;
   selectedProductId = null;
+};
+
+const getCartTotals = () => {
+  let totalItems = 0;
+  let totalPrice = 0;
+  cart.forEach((item) => {
+    totalItems += item.quantity;
+    totalPrice += item.quantity * item.price;
+  });
+  return { totalItems, totalPrice };
+};
+
+const closeCheckoutModal = () => {
+  checkoutModal.hidden = true;
+  checkoutError.textContent = "";
+};
+
+const openCheckoutModal = () => {
+  if (!cart.size) {
+    window.alert("Tu carrito esta vacio. Agrega productos antes de pagar.");
+    return;
+  }
+  const totals = getCartTotals();
+  checkoutTotal.textContent = formatGTQ(totals.totalPrice);
+  checkoutModal.hidden = false;
+};
+
+const sanitizeCardNumber = (value) => value.replace(/\D/g, "").slice(0, 19);
+const formatCardNumber = (value) => sanitizeCardNumber(value).replace(/(\d{4})(?=\d)/g, "$1 ").trim();
+const sanitizeExpiry = (value) => value.replace(/[^\d/]/g, "").slice(0, 5);
+const sanitizeCvv = (value) => value.replace(/\D/g, "").slice(0, 4);
+
+const validatePaymentData = (data) => {
+  if (!data.cardName || data.cardName.length < 4) return "Ingresa el nombre completo del titular.";
+  if (!/^\d{13,19}$/.test(data.cardNumber)) return "El numero de tarjeta debe tener entre 13 y 19 digitos.";
+  if (!/^\d{2}\/\d{2}$/.test(data.cardExpiry)) return "El vencimiento debe estar en formato MM/AA.";
+  if (!/^\d{3,4}$/.test(data.cardCvv)) return "El CVV debe tener 3 o 4 digitos.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.customerEmail)) return "Ingresa un correo valido para la factura.";
+  if (!data.customerAddress || data.customerAddress.length < 8) return "Ingresa una direccion de entrega valida.";
+  if (!data.customerNit) return "Ingresa NIT o C/F para la factura.";
+
+  const [mm, yy] = data.cardExpiry.split("/").map(Number);
+  if (mm < 1 || mm > 12) return "Mes de vencimiento invalido.";
+  const year = 2000 + yy;
+  const d = nowDate();
+  const currentPeriod = d.getFullYear() * 12 + (d.getMonth() + 1);
+  const cardPeriod = year * 12 + mm;
+  if (cardPeriod < currentPeriod) return "La tarjeta aparece vencida.";
+
+  return "";
+};
+
+const generateInvoicePdf = (invoice) => {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    window.alert("No fue posible cargar el generador PDF. Revisa tu conexion e intenta de nuevo.");
+    return false;
+  }
+
+  const { customer, totals, number, items, createdAt } = invoice;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const date = createdAt ? new Date(createdAt) : nowDate();
+  const dateText = `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+
+  const pageW = 210;
+  const left = 14;
+  const right = 196;
+
+  doc.setFillColor(12, 33, 64);
+  doc.rect(0, 0, pageW, 34, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(19);
+  doc.text("ElectroTienda GT", left, 15);
+  doc.setFontSize(10);
+  doc.text("Factura electronica", left, 22);
+  doc.text("Tecnologia para Guatemala", left, 27);
+  doc.setFontSize(11);
+  doc.text(`No. ${number}`, right, 15, { align: "right" });
+  doc.text(dateText, right, 22, { align: "right" });
+
+  doc.setFillColor(240, 245, 255);
+  doc.roundedRect(left, 40, 182, 42, 2, 2, "F");
+  doc.setTextColor(20, 33, 52);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("Datos de cliente", 18, 48);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Nombre: ${customer.cardName}`, 18, 55);
+  doc.text(`Correo: ${customer.customerEmail}`, 18, 61);
+  doc.text(`Direccion: ${customer.customerAddress}`, 18, 67);
+  doc.text(`NIT/C/F: ${customer.customerNit}`, 18, 73);
+  doc.text(`Pago: Tarjeta terminada en ${customer.cardNumber.slice(-4)}`, 18, 79);
+
+  let y = 92;
+  doc.setFillColor(12, 33, 64);
+  doc.rect(left, y, 182, 8, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Producto", 18, y + 5.5);
+  doc.text("Cant.", 132, y + 5.5);
+  doc.text("Precio", 152, y + 5.5);
+  doc.text("Subtotal", 192, y + 5.5, { align: "right" });
+  y += 10;
+
+  doc.setTextColor(29, 43, 63);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  items.forEach((item, index) => {
+    if (y > 262) {
+      doc.addPage();
+      y = 20;
+      doc.setFillColor(12, 33, 64);
+      doc.rect(left, y, 182, 8, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.text("Producto", 18, y + 5.5);
+      doc.text("Cant.", 132, y + 5.5);
+      doc.text("Precio", 152, y + 5.5);
+      doc.text("Subtotal", 192, y + 5.5, { align: "right" });
+      y += 10;
+      doc.setTextColor(29, 43, 63);
+      doc.setFont("helvetica", "normal");
+    }
+
+    if (index % 2 === 0) {
+      doc.setFillColor(247, 250, 255);
+      doc.rect(left, y - 4.5, 182, 8, "F");
+    }
+
+    const shortName = doc.splitTextToSize(item.name, 106)[0];
+    doc.text(shortName, 18, y);
+    doc.text(String(item.quantity), 134, y);
+    doc.text(formatGTQ(item.price), 152, y);
+    doc.text(formatGTQ(item.price * item.quantity), 192, y, { align: "right" });
+    y += 8;
+  });
+
+  y += 4;
+  doc.setFillColor(240, 245, 255);
+  doc.roundedRect(118, y, 76, 24, 2, 2, "F");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(20, 33, 52);
+  doc.text(`Articulos: ${totals.totalItems}`, 122, y + 8);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text(`Total pagado: ${formatGTQ(totals.totalPrice)}`, 122, y + 17);
+
+  const footerY = 287;
+  doc.setDrawColor(210, 220, 237);
+  doc.line(left, footerY - 4, right, footerY - 4);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(86, 102, 131);
+  doc.text("Gracias por comprar en ElectroTienda GT.", left, footerY);
+  doc.text("Factura valida como comprobante electronico de compra.", right, footerY, { align: "right" });
+
+  doc.save(`Factura_ElectroTiendaGT_${number}.pdf`);
+  return true;
 };
 
 const openProductModal = (product) => {
@@ -517,6 +715,8 @@ const renderCart = () => {
   emptyCart.style.display = cart.size ? "none" : "block";
   cartCount.textContent = String(totalItems);
   cartTotal.textContent = formatGTQ(totalPrice);
+  checkoutBtn.disabled = !cart.size;
+  downloadInvoiceBtn.disabled = !lastInvoice;
 };
 
 const addToCart = (productId) => {
@@ -574,6 +774,82 @@ clearCartBtn.addEventListener("click", () => {
   renderCart();
 });
 
+checkoutBtn.addEventListener("click", openCheckoutModal);
+
+checkoutModal.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  if (target.dataset.closeCheckout === "true") {
+    closeCheckoutModal();
+  }
+});
+
+closeCheckoutBtn.addEventListener("click", closeCheckoutModal);
+
+cardNumberInput.addEventListener("input", () => {
+  cardNumberInput.value = formatCardNumber(cardNumberInput.value);
+});
+
+cardExpiryInput.addEventListener("input", () => {
+  let value = sanitizeExpiry(cardExpiryInput.value);
+  if (/^\d{2}$/.test(value)) value = `${value}/`;
+  cardExpiryInput.value = value;
+});
+
+cardCvvInput.addEventListener("input", () => {
+  cardCvvInput.value = sanitizeCvv(cardCvvInput.value);
+});
+
+checkoutForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const payload = {
+    cardName: cardNameInput.value.trim(),
+    cardNumber: sanitizeCardNumber(cardNumberInput.value),
+    cardExpiry: cardExpiryInput.value.trim(),
+    cardCvv: sanitizeCvv(cardCvvInput.value),
+    customerEmail: customerEmailInput.value.trim(),
+    customerAddress: customerAddressInput.value.trim(),
+    customerNit: customerNitInput.value.trim()
+  };
+
+  const error = validatePaymentData(payload);
+  if (error) {
+    checkoutError.textContent = error;
+    return;
+  }
+  checkoutError.textContent = "";
+
+  const totals = getCartTotals();
+  const number = invoiceNumber();
+  const invoiceData = {
+    customer: payload,
+    totals,
+    number,
+    items: Array.from(cart.values()),
+    createdAt: nowDate().toISOString()
+  };
+  const pdfCreated = generateInvoicePdf(invoiceData);
+  if (!pdfCreated) return;
+
+  saveLastInvoice(invoiceData);
+
+  checkoutForm.reset();
+  closeCheckoutModal();
+  cart.clear();
+  saveCart();
+  renderCart();
+  window.alert("Pago procesado con tarjeta. Tu factura PDF fue generada correctamente.");
+});
+
+downloadInvoiceBtn.addEventListener("click", () => {
+  if (!lastInvoice) {
+    window.alert("Aun no hay factura disponible para descargar.");
+    return;
+  }
+  generateInvoicePdf(lastInvoice);
+});
+
 productModal.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
@@ -590,9 +866,9 @@ modalAddBtn.addEventListener("click", () => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !productModal.hidden) {
-    closeProductModal();
-  }
+  if (event.key !== "Escape") return;
+  if (!productModal.hidden) closeProductModal();
+  if (!checkoutModal.hidden) closeCheckoutModal();
 });
 
 themeToggle.addEventListener("click", () => {
