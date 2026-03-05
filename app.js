@@ -301,6 +301,15 @@ const emptyCart = document.getElementById("emptyCart");
 const clearCartBtn = document.getElementById("clearCart");
 const themeToggle = document.getElementById("themeToggle");
 const productTemplate = document.getElementById("productCardTemplate");
+const productModal = document.getElementById("productModal");
+const modalImage = document.getElementById("modalImage");
+const modalCategory = document.getElementById("modalCategory");
+const modalTitle = document.getElementById("modalTitle");
+const modalDesc = document.getElementById("modalDesc");
+const modalPrice = document.getElementById("modalPrice");
+const modalSpecs = document.getElementById("modalSpecs");
+const modalAddBtn = document.getElementById("modalAddBtn");
+const closeModalBtn = document.getElementById("closeModalBtn");
 
 const THEME_STORAGE_KEY = "electro_tienda_theme";
 const CART_STORAGE_KEY = "electro_tienda_cart";
@@ -337,16 +346,102 @@ const filters = {
   category: "all",
   sort: "default"
 };
+let selectedProductId = null;
 
 const formatGTQ = (amount) => `Q ${amount.toFixed(2)}`;
 
 const saveTheme = (mode) => localStorage.setItem(THEME_STORAGE_KEY, mode);
 const saveCart = () => localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(Array.from(cart.values())));
+const getProductById = (productId) => products.find((p) => p.id === productId);
+
+const getProductSpecs = (product) => {
+  const base = [
+    `Categoria: ${product.category}`,
+    `Precio: ${formatGTQ(product.price)}`,
+    "Garantia local de 12 meses.",
+    "Entrega en Guatemala en 24 a 72 horas."
+  ];
+
+  const byCategory = {
+    Computo: [
+      "Procesador de alto rendimiento para trabajo y estudio.",
+      "Almacenamiento SSD rapido para encendido y carga de programas.",
+      "Conectividad WiFi y Bluetooth integrada."
+    ],
+    Telefonia: [
+      "Pantalla de alta nitidez para multimedia y redes.",
+      "Bateria optimizada para uso durante todo el dia.",
+      "Camara principal para foto y video en alta calidad."
+    ],
+    Pantallas: [
+      "Panel con buen nivel de color y contraste.",
+      "Entradas HDMI para consola, PC o TV box.",
+      "Ideal para oficina, entretenimiento y videojuegos."
+    ],
+    Audio: [
+      "Sonido claro con bajos definidos.",
+      "Conexion inalambrica estable por Bluetooth.",
+      "Diseno comodo para uso diario."
+    ],
+    Accesorios: [
+      "Compatible con la mayoria de equipos modernos.",
+      "Construccion duradera para uso constante.",
+      "Instalacion rapida y sencilla."
+    ],
+    "Hogar inteligente": [
+      "Control desde app movil y configuracion intuitiva.",
+      "Automatizaciones para mejorar seguridad y comodidad.",
+      "Compatibilidad con redes WiFi domesticas."
+    ],
+    Tablets: [
+      "Pantalla amplia ideal para estudio y contenido multimedia.",
+      "Sistema fluido para tareas, llamadas y apps.",
+      "Excelente balance entre portabilidad y potencia."
+    ],
+    Wearables: [
+      "Monitoreo de actividad, ritmo cardiaco y sueno.",
+      "Sincronizacion con smartphone.",
+      "Bateria de varios dias segun uso."
+    ],
+    Redes: [
+      "Cobertura mejorada para hogar u oficina.",
+      "Configuracion facil desde navegador o app.",
+      "Conexion estable para multiples dispositivos."
+    ]
+  };
+
+  return [...base, ...(byCategory[product.category] || ["Producto con excelente relacion calidad-precio."])];
+};
+
+const closeProductModal = () => {
+  productModal.hidden = true;
+  selectedProductId = null;
+};
+
+const openProductModal = (product) => {
+  selectedProductId = product.id;
+  modalImage.src = product.image;
+  modalImage.alt = product.name;
+  modalCategory.textContent = product.category;
+  modalTitle.textContent = product.name;
+  modalDesc.textContent = product.description;
+  modalPrice.textContent = formatGTQ(product.price);
+
+  modalSpecs.innerHTML = "";
+  getProductSpecs(product).forEach((spec) => {
+    const li = document.createElement("li");
+    li.textContent = spec;
+    modalSpecs.appendChild(li);
+  });
+
+  productModal.hidden = false;
+};
 
 const applyTheme = (mode) => {
   const dark = mode === "dark";
   document.body.classList.toggle("dark", dark);
-  themeToggle.textContent = dark ? "Modo claro" : "Modo oscuro";
+  themeToggle.textContent = dark ? "Cambiar a modo claro" : "Cambiar a modo oscuro";
+  themeToggle.setAttribute("aria-pressed", dark ? "true" : "false");
 };
 
 const populateCategoryOptions = () => {
@@ -388,6 +483,8 @@ const renderProducts = () => {
     card.querySelector(".product-price").textContent = formatGTQ(product.price);
 
     const addBtn = card.querySelector(".add-btn");
+    const detailBtn = card.querySelector(".detail-btn");
+    detailBtn.addEventListener("click", () => openProductModal(product));
     addBtn.addEventListener("click", () => addToCart(product.id));
 
     productGrid.appendChild(card);
@@ -475,6 +572,27 @@ clearCartBtn.addEventListener("click", () => {
   cart.clear();
   saveCart();
   renderCart();
+});
+
+productModal.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  if (target.dataset.close === "true") {
+    closeProductModal();
+  }
+});
+
+closeModalBtn.addEventListener("click", closeProductModal);
+
+modalAddBtn.addEventListener("click", () => {
+  if (!selectedProductId) return;
+  addToCart(selectedProductId);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !productModal.hidden) {
+    closeProductModal();
+  }
 });
 
 themeToggle.addEventListener("click", () => {

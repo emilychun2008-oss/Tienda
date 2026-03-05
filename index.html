@@ -16,11 +16,11 @@
       <h1>ElectroTienda GT</h1>
       <p class="lead">Catalogo moderno de articulos electronicos con precios en quetzales.</p>
     </div>
-    <button id="themeToggle" class="theme-toggle" type="button">Modo oscuro</button>
+    <button id="themeToggle" class="theme-toggle" type="button" aria-pressed="false">Cambiar a modo oscuro</button>
   </header>
 
   <main class="layout">
-    <section>
+    <section class="catalog-panel">
       <div class="section-head">
         <h2>Productos destacados</h2>
         <div class="filters-row">
@@ -70,11 +70,31 @@
         <p class="product-desc"></p>
         <div class="product-foot">
           <strong class="product-price"></strong>
-          <button class="add-btn" type="button">Agregar</button>
+          <div class="product-actions">
+            <button class="detail-btn" type="button">Ver detalles</button>
+            <button class="add-btn" type="button">Agregar</button>
+          </div>
         </div>
       </div>
     </article>
   </template>
+
+  <div id="productModal" class="modal" hidden>
+    <div class="modal-overlay" data-close="true"></div>
+    <article class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button id="closeModalBtn" class="close-modal" type="button" aria-label="Cerrar">x</button>
+      <img id="modalImage" class="modal-image" alt="" />
+      <div class="modal-content">
+        <p id="modalCategory" class="product-category"></p>
+        <h3 id="modalTitle"></h3>
+        <p id="modalDesc" class="modal-desc"></p>
+        <strong id="modalPrice" class="modal-price"></strong>
+        <h4>Caracteristicas</h4>
+        <ul id="modalSpecs" class="spec-list"></ul>
+        <button id="modalAddBtn" class="add-btn" type="button">Agregar al carrito</button>
+      </div>
+    </article>
+  </div>
 
   <script src="app.js"></script>
 </body>
